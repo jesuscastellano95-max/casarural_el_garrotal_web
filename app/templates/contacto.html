@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Contacto</h2>
+
+{% if enviado %}
+    <p>Gracias, {{ nombre }}. Hemos recibido tu mensaje.</p>
+{% endif %}
+
+<form method="post" action="/contacto">
+    <label>Nombre:</label><br>
+    <input type="text" name="nombre" required><br><br>
+
+    <label>Email:</label><br>
+    <input type="email" name="email" required><br><br>
+
+    <label>Teléfono:</label><br>
+    <input type="text" name="telefono"><br><br>
+
+    <label>Mensaje:</label><br>
+    <textarea name="mensaje" required></textarea><br><br>
+
+    <button type="submit">Enviar</button>
+</form>
+{% endblock %}

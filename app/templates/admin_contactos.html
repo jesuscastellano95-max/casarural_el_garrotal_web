@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Mensajes recibidos</h2>
+
+{% if contactos %}
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Mensaje</th>
+        </tr>
+
+        {% for contacto in contactos %}
+        <tr>
+            <td>{{ contacto.id }}</td>
+            <td>{{ contacto.nombre }}</td>
+            <td>{{ contacto.email }}</td>
+            <td>{{ contacto.telefono }}</td>
+            <td>{{ contacto.mensaje }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>No hay mensajes guardados todavía.</p>
+{% endif %}
+{% endblock %}
