@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Solicitudes de reserva</h2>
+
+{% if reservas %}
+<table border="1" cellpadding="8">
+    <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Email</th>
+        <th>Teléfono</th>
+        <th>Entrada</th>
+        <th>Salida</th>
+        <th>Personas</th>
+        <th>Estado</th>
+        <th>Mensaje</th>
+        <th>Acciones</th>
+    </tr>
+
+    {% for reserva in reservas %}
+    <tr>
+        <td>{{ reserva.id }}</td>
+        <td>{{ reserva.nombre }}</td>
+        <td>{{ reserva.email }}</td>
+        <td>{{ reserva.telefono }}</td>
+        <td>{{ reserva.fecha_entrada }}</td>
+        <td>{{ reserva.fecha_salida }}</td>
+        <td>{{ reserva.numero_personas }}</td>
+        <td>{{ reserva.estado }}</td>
+        <td>{{ reserva.mensaje }}</td>
+
+        <td>
+            {% if reserva.estado == "pendiente" %}
+                <form method="post" action="/admin/reservas/{{ reserva.id }}/confirmar" style="display:inline;">
+                    <button type="submit">Confirmar</button>
+                </form>
+
+                <form method="post" action="/admin/reservas/{{ reserva.id }}/cancelar" style="display:inline;">
+                    <button type="submit">Cancelar</button>
+                </form>
+
+            {% elif reserva.estado == "confirmada" %}
+                <form method="post" action="/admin/reservas/{{ reserva.id }}/cancelar" style="display:inline;">
+                    <button type="submit">Cancelar</button>
+                </form>
+
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% else %}
+<p>No hay reservas todavía.</p>
+{% endif %}
+
+{% endblock %}

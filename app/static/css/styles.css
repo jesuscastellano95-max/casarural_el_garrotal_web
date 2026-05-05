@@ -27,3 +27,27 @@ footer {
     text-align: center;
     padding: 10px;
 }
+.calendario {
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.calendario td, .calendario th {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+}
+
+.ocupado {
+    background-color: red;
+    color: white;
+}
+
+.libre {
+    background-color: #d8f3dc;
+}
+
+.fuera-mes {
+    background-color: #eee;
+    color: #aaa;
+}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Calendario de disponibilidad</h2>
+
+<p>
+    Consulta la disponibilidad de Casa Rural El Garrotal.
+    Las fechas en rojo ya están reservadas y las fechas en gris ya han pasado.
+</p>
+
+<div class="calendarios-grid">
+    {% for calendario in calendarios %}
+    <section class="mes-card">
+        <h4>{{ calendario.month_name }} {{ calendario.year }}</h4>
+
+        <table class="calendario">
+            <tr>
+                <th>Lun</th>
+                <th>Mar</th>
+                <th>Mié</th>
+                <th>Jue</th>
+                <th>Vie</th>
+                <th>Sáb</th>
+                <th>Dom</th>
+            </tr>
+
+            {% for semana in calendario.semanas %}
+            <tr>
+                {% for dia in semana %}
+                    {% if dia.month != calendario.month %}
+                        <td class="fuera-mes">{{ dia.day }}</td>
+                    {% elif dia < hoy %}
+                        <td class="pasado">{{ dia.day }}</td>
+                    {% elif dia.isoformat() in fechas_ocupadas %}
+                        <td class="ocupado">{{ dia.day }}</td>
+                    {% else %}
+                        <td class="libre">{{ dia.day }}</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+    {% endfor %}
+</div>
+
+{% endblock %}

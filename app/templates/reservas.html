@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Solicitar reserva</h2>
+
+{% if error %}
+    <p style="color: red; font-weight: bold;">{{ error }}</p>
+{% endif %}
+
+{% if enviado %}
+    <p style="color: green; font-weight: bold;">
+        Gracias, {{ nombre }}. Hemos recibido tu solicitud de reserva.
+    </p>
+{% endif %}
+
+<form method="post" action="/reservas">
+    <label>Nombre:</label><br>
+    <input type="text" name="nombre" required><br><br>
+
+    <label>Email:</label><br>
+    <input type="email" name="email" required><br><br>
+
+    <label>Teléfono:</label><br>
+    <input type="text" name="telefono"><br><br>
+
+    <label>Fecha de entrada:</label><br>
+    <input type="date" name="fecha_entrada" required><br><br>
+
+    <label>Fecha de salida:</label><br>
+    <input type="date" name="fecha_salida" required><br><br>
+
+    <label>Número de personas:</label><br>
+    <input type="number" name="numero_personas" min="1" required><br><br>
+
+    <label>Mensaje:</label><br>
+    <textarea name="mensaje"></textarea><br><br>
+
+    <button type="submit">Solicitar reserva</button>
+</form>
+
+<h3>Calendario de disponibilidad</h3>
+
+<p>
+    Las fechas en rojo ya están reservadas.
+    Las fechas en gris ya han pasado.
+</p>
+
+<div class="calendarios-grid">
+    {% for calendario in calendarios %}
+    <section class="mes-card">
+        <h4>{{ calendario.month_name }} {{ calendario.year }}</h4>
+
+        <table class="calendario">
+            <tr>
+                <th>Lun</th>
+                <th>Mar</th>
+                <th>Mié</th>
+                <th>Jue</th>
+                <th>Vie</th>
+                <th>Sáb</th>
+                <th>Dom</th>
+            </tr>
+
+            {% for semana in calendario.semanas %}
+            <tr>
+                {% for dia in semana %}
+                    {% if dia.month != calendario.month %}
+                        <td class="fuera-mes">{{ dia.day }}</td>
+                    {% elif dia < hoy %}
+                        <td class="pasado">{{ dia.day }}</td>
+                    {% elif dia.isoformat() in fechas_ocupadas %}
+                        <td class="ocupado">{{ dia.day }}</td>
+                    {% else %}
+                        <td class="libre">{{ dia.day }}</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}
