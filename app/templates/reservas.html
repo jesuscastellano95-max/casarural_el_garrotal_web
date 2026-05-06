@@ -71,7 +71,9 @@
                     {% elif dia.isoformat() in fechas_ocupadas %}
                         <td class="ocupado">{{ dia.day }}</td>
                     {% else %}
-                        <td class="libre">{{ dia.day }}</td>
+                        <td class="libre dia-clickable" data-fecha="{{ dia.isoformat() }}">
+                         {{ dia.day }}
+                        </td>
                     {% endif %}
                 {% endfor %}
             </tr>
@@ -80,4 +82,63 @@
     </section>
     {% endfor %}
 </div>
+<script>
+    let seleccionEntrada = null;
+
+    const inputEntrada = document.querySelector('input[name="fecha_entrada"]');
+    const inputSalida = document.querySelector('input[name="fecha_salida"]');
+    const diasLibres = document.querySelectorAll('.dia-clickable');
+
+    diasLibres.forEach(dia => {
+        dia.addEventListener('click', () => {
+            const fecha = dia.dataset.fecha;
+
+            if (!seleccionEntrada) {
+                seleccionEntrada = fecha;
+                inputEntrada.value = fecha;
+                inputSalida.value = "";
+                limpiarSeleccion();
+                dia.classList.add("seleccionado-entrada");
+            } else {
+                if (fecha <= seleccionEntrada) {
+                    seleccionEntrada = fecha;
+                    inputEntrada.value = fecha;
+                    inputSalida.value = "";
+                    limpiarSeleccion();
+                    dia.classList.add("seleccionado-entrada");
+                } else {
+                    inputSalida.value = fecha;
+                    limpiarSeleccion();
+                    marcarRango(seleccionEntrada, fecha);
+                    seleccionEntrada = null;
+                }
+            }
+        });
+    });
+
+    function limpiarSeleccion() {
+        diasLibres.forEach(dia => {
+            dia.classList.remove("seleccionado-entrada");
+            dia.classList.remove("seleccionado-rango");
+        });
+    }
+
+    function marcarRango(entrada, salida) {
+        diasLibres.forEach(dia => {
+            const fecha = dia.dataset.fecha;
+
+            if (fecha === entrada) {
+                dia.classList.add("seleccionado-entrada");
+            }
+
+            if (fecha > entrada && fecha < salida) {
+                dia.classList.add("seleccionado-rango");
+            }
+
+            if (fecha === salida) {
+                dia.classList.add("seleccionado-entrada");
+            }
+        });
+    }
+</script>
 {% endblock %}

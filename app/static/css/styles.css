@@ -51,3 +51,21 @@ footer {
     background-color: #eee;
     color: #aaa;
 }
+
+.dia-clickable {
+    cursor: pointer;
+}
+
+.dia-clickable:hover {
+    outline: 2px solid #2f4f2f;
+}
+
+.seleccionado-entrada {
+    background-color: #2f4f2f !important;
+    color: white;
+    font-weight: bold;
+}
+
+.seleccionado-rango {
+    background-color: #a3d9a5 !important;
+}
