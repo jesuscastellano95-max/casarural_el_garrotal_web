@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h2>Panel de administración</h2>
+
+<p>Desde aquí puedes gestionar la casa rural.</p>
+
+<div class="admin-grid">
+    <a class="admin-card" href="/admin/reservas">
+        <h3>Reservas</h3>
+        <p>Ver, confirmar o cancelar solicitudes de reserva.</p>
+    </a>
+
+    <a class="admin-card" href="/admin/contactos">
+        <h3>Contactos</h3>
+        <p>Consultar mensajes recibidos desde el formulario de contacto.</p>
+    </a>
+
+    <a class="admin-card" href="/admin/precios">
+        <h3>Precios</h3>
+        <p>Configurar precios por noche.</p>
+    </a>
+
+    <a class="admin-card" href="/admin/logout">
+        <h3>Cerrar sesión</h3>
+        <p>Salir del panel de administración.</p>
+    </a>
+</div>
+
+{% endblock %}

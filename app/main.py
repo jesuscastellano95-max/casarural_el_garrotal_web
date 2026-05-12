@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.database import engine, crear_tablas
-from app.models import Contacto, Reserva
+from app.models import Contacto, Reserva, PrecioNoche
 
 
 app = FastAPI()
@@ -238,7 +238,7 @@ def admin_login_post(
 ):
     if usuario == "admin" and password == "admin123":
         request.session["admin_logueado"] = True
-        return RedirectResponse(url="/admin/reservas", status_code=303)
+        return RedirectResponse(url="/admin", status_code=303)
 
     return templates.TemplateResponse(
         request,
@@ -251,6 +251,18 @@ def admin_login_post(
 def admin_logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/admin/login", status_code=303)
+
+
+@app.get("/admin")
+def admin_dashboard(request: Request):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
+    return templates.TemplateResponse(
+        request,
+        "admin_dashboard.html"
+    )
 
 
 @app.get("/admin/contactos")
@@ -325,5 +337,60 @@ def cancelar_reserva(request: Request, reserva_id: int):
 
     return RedirectResponse(
         url="/admin/reservas",
+        status_code=303
+    )
+
+
+@app.get("/admin/precios")
+def admin_precios(request: Request):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
+    with Session(engine) as session:
+        precios = session.exec(
+            select(PrecioNoche).order_by(PrecioNoche.fecha)
+        ).all()
+
+    return templates.TemplateResponse(
+        request,
+        "admin_precios.html",
+        {
+            "precios": precios
+        }
+    )
+
+
+@app.post("/admin/precios")
+def guardar_precio(
+    request: Request,
+    fecha: str = Form(...),
+    precio: float = Form(...)
+):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
+    fecha_obj = date.fromisoformat(fecha)
+
+    with Session(engine) as session:
+        precio_existente = session.exec(
+            select(PrecioNoche).where(PrecioNoche.fecha == fecha_obj)
+        ).first()
+
+        if precio_existente:
+            precio_existente.precio = precio
+            session.add(precio_existente)
+        else:
+            nuevo_precio = PrecioNoche(
+                fecha=fecha_obj,
+                precio=precio
+            )
+            session.add(nuevo_precio)
+
+        session.commit()
+
+    return RedirectResponse(
+        url="/admin/precios",
         status_code=303
     )

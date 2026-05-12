@@ -69,3 +69,29 @@ footer {
 .seleccionado-rango {
     background-color: #a3d9a5 !important;
 }
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.admin-card {
+    display: block;
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #222;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+}
+
+.admin-card h3 {
+    margin-top: 0;
+    color: #2f4f2f;
+}
