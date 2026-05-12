@@ -41,47 +41,66 @@
 <h3>Calendario de disponibilidad</h3>
 
 <p>
-    Las fechas en rojo ya están reservadas.
-    Las fechas en gris ya han pasado.
+    Selecciona el mes que quieres consultar. Las fechas en rojo ya están reservadas
+    y las fechas en gris ya han pasado.
 </p>
 
-<div class="calendarios-grid">
-    {% for calendario in calendarios %}
-    <section class="mes-card">
-        <h4>{{ calendario.month_name }} {{ calendario.year }}</h4>
+<form method="get" action="/reservas">
+    <label>Mes:</label>
+    <select name="mes" onchange="this.form.submit()">
+        {% for m in meses_disponibles %}
+            <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>
+                {% if m == 1 %}Enero{% endif %}
+                {% if m == 2 %}Febrero{% endif %}
+                {% if m == 3 %}Marzo{% endif %}
+                {% if m == 4 %}Abril{% endif %}
+                {% if m == 5 %}Mayo{% endif %}
+                {% if m == 6 %}Junio{% endif %}
+                {% if m == 7 %}Julio{% endif %}
+                {% if m == 8 %}Agosto{% endif %}
+                {% if m == 9 %}Septiembre{% endif %}
+                {% if m == 10 %}Octubre{% endif %}
+                {% if m == 11 %}Noviembre{% endif %}
+                {% if m == 12 %}Diciembre{% endif %}
+            </option>
+        {% endfor %}
+    </select>
+</form>
 
-        <table class="calendario">
-            <tr>
-                <th>Lun</th>
-                <th>Mar</th>
-                <th>Mié</th>
-                <th>Jue</th>
-                <th>Vie</th>
-                <th>Sáb</th>
-                <th>Dom</th>
-            </tr>
+<section class="mes-card">
+    <h4>{{ month_name }} {{ year }}</h4>
 
-            {% for semana in calendario.semanas %}
-            <tr>
-                {% for dia in semana %}
-                    {% if dia.month != calendario.month %}
-                        <td class="fuera-mes">{{ dia.day }}</td>
-                    {% elif dia < hoy %}
-                        <td class="pasado">{{ dia.day }}</td>
-                    {% elif dia.isoformat() in fechas_ocupadas %}
-                        <td class="ocupado">{{ dia.day }}</td>
-                    {% else %}
-                        <td class="libre dia-clickable" data-fecha="{{ dia.isoformat() }}">
-                         {{ dia.day }}
-                        </td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
+    <table class="calendario">
+        <tr>
+            <th>Lun</th>
+            <th>Mar</th>
+            <th>Mié</th>
+            <th>Jue</th>
+            <th>Vie</th>
+            <th>Sáb</th>
+            <th>Dom</th>
+        </tr>
+
+        {% for semana in semanas %}
+        <tr>
+            {% for dia in semana %}
+                {% if dia.month != month %}
+                    <td class="fuera-mes">{{ dia.day }}</td>
+                {% elif dia < hoy %}
+                    <td class="pasado">{{ dia.day }}</td>
+                {% elif dia.isoformat() in fechas_ocupadas %}
+                    <td class="ocupado">{{ dia.day }}</td>
+                {% else %}
+                    <td class="libre dia-clickable" data-fecha="{{ dia.isoformat() }}">
+                        {{ dia.day }}
+                    </td>
+                {% endif %}
             {% endfor %}
-        </table>
-    </section>
-    {% endfor %}
-</div>
+        </tr>
+        {% endfor %}
+    </table>
+</section>
+
 <script>
     let seleccionEntrada = null;
 
@@ -141,4 +160,5 @@
         });
     }
 </script>
+
 {% endblock %}

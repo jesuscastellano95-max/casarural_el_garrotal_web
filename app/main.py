@@ -4,47 +4,48 @@ Created on Tue Apr 28 13:50:02 2026
 
 @author: jesus
 """
+import calendar
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Form
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-
-import calendar
-from datetime import date, timedelta
-
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.database import engine, crear_tablas
 from app.models import Contacto, Reserva
 
 
-# Crear app
 app = FastAPI()
 
-# Crear tablas en la base de datos
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="cambia-esta-clave-secreta"
+)
+
 crear_tablas()
 
-# Rutas base
 BASE_DIR = Path(__file__).resolve().parent
 
-# Templates
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-# Archivos estáticos (CSS, imágenes...)
 app.mount(
     "/static",
     StaticFiles(directory=str(BASE_DIR / "static")),
     name="static"
 )
 
-#Función reutilizable calendario#
 
-def generar_calendarios_disponibilidad():
-    hoy = date.today()
-    year = hoy.year
+def verificar_admin(request: Request):
+    if not request.session.get("admin_logueado"):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    return None
 
+
+def obtener_fechas_ocupadas():
     with Session(engine) as session:
         reservas_confirmadas = session.exec(
             select(Reserva).where(Reserva.estado == "confirmada")
@@ -59,27 +60,39 @@ def generar_calendarios_disponibilidad():
             fechas_ocupadas.add(dia.isoformat())
             dia += timedelta(days=1)
 
+    return fechas_ocupadas
+
+
+def generar_contexto_calendario(mes: int | None = None):
+    hoy = date.today()
+    year = hoy.year
+
+    if mes is None:
+        mes = hoy.month
+
     nombres_meses = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ]
 
+    meses_disponibles = list(range(hoy.month, 13))
+
     cal = calendar.Calendar(firstweekday=0)
-    calendarios = []
+    semanas = cal.monthdatescalendar(year, mes)
 
-    for month in range(hoy.month, 13):
-        semanas = cal.monthdatescalendar(year, month)
+    fechas_ocupadas = obtener_fechas_ocupadas()
 
-        calendarios.append({
-            "month": month,
-            "month_name": nombres_meses[month],
-            "year": year,
-            "semanas": semanas
-        })
+    return {
+        "semanas": semanas,
+        "fechas_ocupadas": fechas_ocupadas,
+        "month": mes,
+        "month_name": nombres_meses[mes],
+        "year": year,
+        "meses_disponibles": meses_disponibles,
+        "mes_actual": mes,
+        "hoy": hoy
+    }
 
-    return calendarios, fechas_ocupadas, hoy
-
-# -------- RUTAS -------- #
 
 @app.get("/")
 def home(request: Request):
@@ -104,7 +117,6 @@ def enviar_contacto(
     telefono: str = Form(""),
     mensaje: str = Form(...)
 ):
-    # Crear objeto contacto
     nuevo_contacto = Contacto(
         nombre=nombre,
         email=email,
@@ -112,12 +124,10 @@ def enviar_contacto(
         mensaje=mensaje
     )
 
-    # Guardar en base de datos
     with Session(engine) as session:
         session.add(nuevo_contacto)
         session.commit()
 
-    # Respuesta al usuario
     return templates.TemplateResponse(
         request,
         "contacto.html",
@@ -127,31 +137,15 @@ def enviar_contacto(
         }
     )
 
-@app.get("/admin/contactos")
-def ver_contactos(request: Request):
-    with Session(engine) as session:
-        contactos = session.exec(select(Contacto)).all()
-
-    return templates.TemplateResponse(
-        request,
-        "admin_contactos.html",
-        {
-            "contactos": contactos
-        }
-    )
 
 @app.get("/reservas")
-def reservas(request: Request):
-    calendarios, fechas_ocupadas, hoy = generar_calendarios_disponibilidad()
+def reservas(request: Request, mes: int | None = None):
+    contexto = generar_contexto_calendario(mes)
 
     return templates.TemplateResponse(
         request,
         "reservas.html",
-        {
-            "calendarios": calendarios,
-            "fechas_ocupadas": fechas_ocupadas,
-            "hoy": hoy
-        }
+        contexto
     )
 
 
@@ -169,14 +163,13 @@ def enviar_reserva(
     entrada = date.fromisoformat(fecha_entrada)
     salida = date.fromisoformat(fecha_salida)
 
+    contexto = generar_contexto_calendario(entrada.month)
+
     if salida <= entrada:
-        return templates.TemplateResponse(
-            request,
-            "reservas.html",
-            {
-                "error": "La fecha de salida debe ser posterior a la fecha de entrada."
-            }
-        )
+        contexto.update({
+            "error": "La fecha de salida debe ser posterior a la fecha de entrada."
+        })
+        return templates.TemplateResponse(request, "reservas.html", contexto)
 
     with Session(engine) as session:
         reservas_confirmadas = session.exec(
@@ -190,13 +183,10 @@ def enviar_reserva(
             )
 
             if hay_solapamiento:
-                return templates.TemplateResponse(
-                    request,
-                    "reservas.html",
-                    {
-                        "error": "Para esta fecha ya existen reservas."
-                    }
-                )
+                contexto.update({
+                    "error": "Para esta fecha ya existen reservas."
+                })
+                return templates.TemplateResponse(request, "reservas.html", contexto)
 
         nueva_reserva = Reserva(
             nombre=nombre,
@@ -212,18 +202,81 @@ def enviar_reserva(
         session.add(nueva_reserva)
         session.commit()
 
+    contexto.update({
+        "enviado": True,
+        "nombre": nombre
+    })
+
     return templates.TemplateResponse(
         request,
         "reservas.html",
+        contexto
+    )
+
+
+@app.get("/calendario")
+def calendario_reservas(request: Request, mes: int | None = None):
+    contexto = generar_contexto_calendario(mes)
+
+    return templates.TemplateResponse(
+        request,
+        "calendario.html",
+        contexto
+    )
+
+
+@app.get("/admin/login")
+def admin_login(request: Request):
+    return templates.TemplateResponse(request, "admin_login.html")
+
+
+@app.post("/admin/login")
+def admin_login_post(
+    request: Request,
+    usuario: str = Form(...),
+    password: str = Form(...)
+):
+    if usuario == "admin" and password == "admin123":
+        request.session["admin_logueado"] = True
+        return RedirectResponse(url="/admin/reservas", status_code=303)
+
+    return templates.TemplateResponse(
+        request,
+        "admin_login.html",
+        {"error": "Usuario o contraseña incorrectos."}
+    )
+
+
+@app.get("/admin/logout")
+def admin_logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/admin/login", status_code=303)
+
+
+@app.get("/admin/contactos")
+def ver_contactos(request: Request):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
+    with Session(engine) as session:
+        contactos = session.exec(select(Contacto)).all()
+
+    return templates.TemplateResponse(
+        request,
+        "admin_contactos.html",
         {
-            "enviado": True,
-            "nombre": nombre
+            "contactos": contactos
         }
     )
 
 
 @app.get("/admin/reservas")
 def ver_reservas(request: Request):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
     with Session(engine) as session:
         reservas = session.exec(select(Reserva)).all()
 
@@ -235,8 +288,13 @@ def ver_reservas(request: Request):
         }
     )
 
+
 @app.post("/admin/reservas/{reserva_id}/confirmar")
-def confirmar_reserva(reserva_id: int):
+def confirmar_reserva(request: Request, reserva_id: int):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
     with Session(engine) as session:
         reserva = session.get(Reserva, reserva_id)
 
@@ -252,7 +310,11 @@ def confirmar_reserva(reserva_id: int):
 
 
 @app.post("/admin/reservas/{reserva_id}/cancelar")
-def cancelar_reserva(reserva_id: int):
+def cancelar_reserva(request: Request, reserva_id: int):
+    redireccion = verificar_admin(request)
+    if redireccion:
+        return redireccion
+
     with Session(engine) as session:
         reserva = session.get(Reserva, reserva_id)
 
@@ -264,18 +326,4 @@ def cancelar_reserva(reserva_id: int):
     return RedirectResponse(
         url="/admin/reservas",
         status_code=303
-    )
-
-@app.get("/calendario")
-def calendario_reservas(request: Request):
-    calendarios, fechas_ocupadas, hoy = generar_calendarios_disponibilidad()
-
-    return templates.TemplateResponse(
-        request,
-        "calendario.html",
-        {
-            "calendarios": calendarios,
-            "fechas_ocupadas": fechas_ocupadas,
-            "hoy": hoy
-        }
     )
