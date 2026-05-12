@@ -94,6 +94,24 @@ def generar_contexto_calendario(mes: int | None = None):
     }
 
 
+def calcular_precio_total(session: Session, entrada: date, salida: date):
+    precio_total = 0
+    dia = entrada
+
+    while dia < salida:
+        precio_noche = session.exec(
+            select(PrecioNoche).where(PrecioNoche.fecha == dia)
+        ).first()
+
+        if not precio_noche:
+            return None
+
+        precio_total += precio_noche.precio
+        dia += timedelta(days=1)
+
+    return precio_total
+
+
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse(request, "index.html")
@@ -188,6 +206,14 @@ def enviar_reserva(
                 })
                 return templates.TemplateResponse(request, "reservas.html", contexto)
 
+        precio_total = calcular_precio_total(session, entrada, salida)
+
+        if precio_total is None:
+            contexto.update({
+                "error": "No hay precios configurados para todas las noches seleccionadas."
+            })
+            return templates.TemplateResponse(request, "reservas.html", contexto)
+
         nueva_reserva = Reserva(
             nombre=nombre,
             email=email,
@@ -196,7 +222,8 @@ def enviar_reserva(
             fecha_salida=salida,
             numero_personas=numero_personas,
             mensaje=mensaje,
-            estado="pendiente"
+            estado="pendiente",
+            precio_total=precio_total
         )
 
         session.add(nueva_reserva)
@@ -364,33 +391,63 @@ def admin_precios(request: Request):
 @app.post("/admin/precios")
 def guardar_precio(
     request: Request,
-    fecha: str = Form(...),
+    fecha_inicio: str = Form(...),
+    fecha_fin: str = Form(...),
     precio: float = Form(...)
 ):
     redireccion = verificar_admin(request)
     if redireccion:
         return redireccion
 
-    fecha_obj = date.fromisoformat(fecha)
+    inicio = date.fromisoformat(fecha_inicio)
+    fin = date.fromisoformat(fecha_fin)
 
     with Session(engine) as session:
-        precio_existente = session.exec(
-            select(PrecioNoche).where(PrecioNoche.fecha == fecha_obj)
-        ).first()
 
-        if precio_existente:
-            precio_existente.precio = precio
-            session.add(precio_existente)
-        else:
-            nuevo_precio = PrecioNoche(
-                fecha=fecha_obj,
-                precio=precio
+        if fin < inicio:
+            precios = session.exec(
+                select(PrecioNoche).order_by(PrecioNoche.fecha)
+            ).all()
+
+            return templates.TemplateResponse(
+                request,
+                "admin_precios.html",
+                {
+                    "precios": precios,
+                    "error": "La fecha fin no puede ser anterior a la fecha inicio."
+                }
             )
-            session.add(nuevo_precio)
+
+        dia = inicio
+
+        while dia <= fin:
+            precio_existente = session.exec(
+                select(PrecioNoche).where(PrecioNoche.fecha == dia)
+            ).first()
+
+            if precio_existente:
+                precio_existente.precio = precio
+                session.add(precio_existente)
+            else:
+                nuevo_precio = PrecioNoche(
+                    fecha=dia,
+                    precio=precio
+                )
+                session.add(nuevo_precio)
+
+            dia += timedelta(days=1)
 
         session.commit()
 
-    return RedirectResponse(
-        url="/admin/precios",
-        status_code=303
+        precios = session.exec(
+            select(PrecioNoche).order_by(PrecioNoche.fecha)
+        ).all()
+
+    return templates.TemplateResponse(
+        request,
+        "admin_precios.html",
+        {
+            "precios": precios,
+            "mensaje": "Precios actualizados correctamente."
+        }
     )
